@@ -65,6 +65,10 @@ io.on('connection', (socket) => {
     io.emit('phraseUnchecked', phrase);
   });
 
+  socket.on('bingo', () => {
+    socket.broadcast.emit('playerBingo');
+  });
+
   socket.on('reset', () => {
     checkedPhrases.clear();
     gameId = crypto.randomUUID();
