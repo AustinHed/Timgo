@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Timgo</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>TIMGO</h1>
+      <div id="status-bar">
+        <span id="connection-status" class="disconnected">Connecting...</span>
+        <button id="reset-btn">Reset Game</button>
+      </div>
+    </header>
+
+    <div id="bingo-banner" class="hidden">BINGO!</div>
+
+    <div id="board-container">
+      <div id="board"></div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

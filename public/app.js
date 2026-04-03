@@ -1,0 +1,176 @@
+const FREE_INDEX = 12; // center of 5x5 grid
+
+const WINNING_LINES = [
+  [0, 1, 2, 3, 4],
+  [5, 6, 7, 8, 9],
+  [10, 11, 12, 13, 14],
+  [15, 16, 17, 18, 19],
+  [20, 21, 22, 23, 24],
+  [0, 5, 10, 15, 20],
+  [1, 6, 11, 16, 21],
+  [2, 7, 12, 17, 22],
+  [3, 8, 13, 18, 23],
+  [4, 9, 14, 19, 24],
+  [0, 6, 12, 18, 24],
+  [4, 8, 12, 16, 20],
+];
+
+let masterPhrases = [];
+let board = []; // array of 25: phrase string or null (free space)
+let checkedSet = new Set(); // server-confirmed checked phrases
+
+const socket = io();
+
+const boardEl = document.getElementById('board');
+const bingoBanner = document.getElementById('bingo-banner');
+const statusEl = document.getElementById('connection-status');
+const resetBtn = document.getElementById('reset-btn');
+
+// --- Socket events ---
+
+socket.on('connect', () => {
+  statusEl.textContent = 'Connected';
+  statusEl.className = 'connected';
+});
+
+socket.on('disconnect', () => {
+  statusEl.textContent = 'Disconnected';
+  statusEl.className = 'disconnected';
+});
+
+socket.on('init', ({ gameId, phrases, checked }) => {
+  masterPhrases = phrases;
+  checkedSet = new Set(checked);
+  board = loadOrGenerateBoard(gameId, phrases);
+  render();
+});
+
+socket.on('phraseChecked', (phrase) => {
+  checkedSet.add(phrase);
+  updateCellState(phrase, true);
+  checkBingo();
+});
+
+socket.on('phraseUnchecked', (phrase) => {
+  checkedSet.delete(phrase);
+  updateCellState(phrase, false);
+  checkBingo();
+});
+
+socket.on('gameReset', ({ gameId }) => {
+  checkedSet.clear();
+  board = loadOrGenerateBoard(gameId, masterPhrases);
+  render();
+});
+
+resetBtn.addEventListener('click', () => {
+  if (confirm('Reset the game for everyone?')) {
+    socket.emit('reset');
+  }
+});
+
+// --- Board generation ---
+
+function loadOrGenerateBoard(gameId, phrases) {
+  const stored = getStoredBoard();
+  if (stored && stored.gameId === gameId) {
+    return stored.board;
+  }
+  const newBoard = generateBoard(phrases);
+  saveBoard(gameId, newBoard);
+  return newBoard;
+}
+
+function generateBoard(phrases) {
+  // Pick 24 random phrases (no duplicates), shuffle, insert FREE at center
+  const shuffled = [...phrases].sort(() => Math.random() - 0.5);
+  const picked = shuffled.slice(0, 24);
+  // Insert null (free space) at center index
+  picked.splice(FREE_INDEX, 0, null);
+  return picked;
+}
+
+function getStoredBoard() {
+  try {
+    return JSON.parse(localStorage.getItem('timgo_board'));
+  } catch {
+    return null;
+  }
+}
+
+function saveBoard(gameId, board) {
+  localStorage.setItem('timgo_board', JSON.stringify({ gameId, board }));
+}
+
+// --- Rendering ---
+
+function render() {
+  boardEl.innerHTML = '';
+  bingoBanner.classList.add('hidden');
+
+  board.forEach((phrase, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.dataset.index = i;
+
+    if (phrase === null) {
+      cell.classList.add('free', 'checked');
+      cell.textContent = 'FREE';
+    } else {
+      cell.textContent = phrase;
+      if (checkedSet.has(phrase)) {
+        cell.classList.add('checked');
+      }
+      cell.addEventListener('click', () => onCellClick(phrase, cell));
+    }
+
+    boardEl.appendChild(cell);
+  });
+
+  checkBingo();
+}
+
+function updateCellState(phrase, checked) {
+  board.forEach((p, i) => {
+    if (p === phrase) {
+      const cell = boardEl.children[i];
+      if (cell) {
+        cell.classList.toggle('checked', checked);
+      }
+    }
+  });
+}
+
+function onCellClick(phrase, cell) {
+  const isChecked = checkedSet.has(phrase);
+  if (isChecked) {
+    socket.emit('uncheck', phrase);
+  } else {
+    socket.emit('check', phrase);
+  }
+}
+
+// --- Bingo detection ---
+
+function checkBingo() {
+  // Build a set of checked board indices (FREE counts as checked)
+  const checkedIndices = new Set();
+  board.forEach((phrase, i) => {
+    if (phrase === null || checkedSet.has(phrase)) {
+      checkedIndices.add(i);
+    }
+  });
+
+  // Clear previous winning highlights
+  Array.from(boardEl.children).forEach(cell => cell.classList.remove('winning'));
+
+  let hasBingo = false;
+  for (const line of WINNING_LINES) {
+    if (line.every(i => checkedIndices.has(i))) {
+      hasBingo = true;
+      line.forEach(i => boardEl.children[i]?.classList.add('winning'));
+    }
+  }
+
+  bingoBanner.classList.toggle('hidden', !hasBingo);
+}
