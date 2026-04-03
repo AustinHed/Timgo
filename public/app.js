@@ -23,8 +23,11 @@ const socket = io();
 
 const boardEl = document.getElementById('board');
 const bingoBanner = document.getElementById('bingo-banner');
+const otherBingoBanner = document.getElementById('other-bingo-banner');
 const statusEl = document.getElementById('connection-status');
 const resetBtn = document.getElementById('reset-btn');
+
+let hasBingo = false;
 
 // --- Socket events ---
 
@@ -57,8 +60,14 @@ socket.on('phraseUnchecked', (phrase) => {
   checkBingo();
 });
 
+socket.on('playerBingo', () => {
+  otherBingoBanner.classList.remove('hidden');
+});
+
 socket.on('gameReset', ({ gameId }) => {
   checkedSet.clear();
+  hasBingo = false;
+  otherBingoBanner.classList.add('hidden');
   board = loadOrGenerateBoard(gameId, masterPhrases);
   render();
 });
@@ -153,7 +162,6 @@ function onCellClick(phrase, cell) {
 // --- Bingo detection ---
 
 function checkBingo() {
-  // Build a set of checked board indices (FREE counts as checked)
   const checkedIndices = new Set();
   board.forEach((phrase, i) => {
     if (phrase === null || checkedSet.has(phrase)) {
@@ -161,16 +169,21 @@ function checkBingo() {
     }
   });
 
-  // Clear previous winning highlights
   Array.from(boardEl.children).forEach(cell => cell.classList.remove('winning'));
 
-  let hasBingo = false;
+  let nowBingo = false;
   for (const line of WINNING_LINES) {
     if (line.every(i => checkedIndices.has(i))) {
-      hasBingo = true;
+      nowBingo = true;
       line.forEach(i => boardEl.children[i]?.classList.add('winning'));
     }
   }
 
-  bingoBanner.classList.toggle('hidden', !hasBingo);
+  bingoBanner.classList.toggle('hidden', !nowBingo);
+
+  // Notify others the first time this client gets bingo
+  if (nowBingo && !hasBingo) {
+    socket.emit('bingo');
+  }
+  hasBingo = nowBingo;
 }

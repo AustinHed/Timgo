@@ -124,6 +124,22 @@ h1 {
   display: none;
 }
 
+#other-bingo-banner {
+  text-align: center;
+  font-size: clamp(1rem, 5vw, 1.3rem);
+  font-weight: 700;
+  color: #f87171;
+  padding: 10px;
+  margin-bottom: 14px;
+  border: 2px solid #f87171;
+  border-radius: 12px;
+  background: rgba(248, 113, 113, 0.08);
+}
+
+#other-bingo-banner.hidden {
+  display: none;
+}
+
 @keyframes pulse {
   from { opacity: 0.8; transform: scale(1); }
   to   { opacity: 1;   transform: scale(1.02); }
