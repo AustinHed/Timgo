@@ -12,7 +12,8 @@
       <h1>TIMGO</h1>
       <div id="status-bar">
         <span id="connection-status" class="disconnected">Connecting...</span>
-        <button id="reset-btn">Reset Game</button>
+        <button id="edit-btn">Edit</button>
+        <button id="reset-btn">Reset</button>
       </div>
     </header>
 
@@ -21,6 +22,23 @@
 
     <div id="board-container">
       <div id="board"></div>
+    </div>
+  </div>
+
+  <!-- Edit phrases modal -->
+  <div id="modal-overlay" class="hidden">
+    <div id="modal">
+      <div id="modal-header">
+        <h2>Edit Phrases</h2>
+        <button id="modal-close" aria-label="Close">✕</button>
+      </div>
+      <p id="phrase-count-warning" class="hidden">Need at least 24 phrases to fill a board.</p>
+      <div id="phrase-list"></div>
+      <button id="add-phrase-btn">+ Add phrase</button>
+      <div id="modal-footer">
+        <button id="cancel-btn">Cancel</button>
+        <button id="save-btn">Save &amp; Refresh Game</button>
+      </div>
     </div>
   </div>
 

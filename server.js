@@ -8,8 +8,8 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// --- Phrase list ---
-const PHRASES = [
+// --- Phrase list (mutable) ---
+let phrases = [
   "Tim says the N-word (hard R)",
   "Tim brings up Israel first",
   "Tim says \"we should bomb Israel\"",
@@ -49,20 +49,30 @@ io.on('connection', (socket) => {
   // Send full state to newly connected client
   socket.emit('init', {
     gameId,
-    phrases: PHRASES,
+    phrases,
     checked: Array.from(checkedPhrases),
   });
 
   socket.on('check', (phrase) => {
-    if (!PHRASES.includes(phrase)) return;
+    if (!phrases.includes(phrase)) return;
     checkedPhrases.add(phrase);
     io.emit('phraseChecked', phrase);
   });
 
   socket.on('uncheck', (phrase) => {
-    if (!PHRASES.includes(phrase)) return;
+    if (!phrases.includes(phrase)) return;
     checkedPhrases.delete(phrase);
     io.emit('phraseUnchecked', phrase);
+  });
+
+  socket.on('updatePhrases', (newPhrases) => {
+    if (!Array.isArray(newPhrases)) return;
+    const cleaned = newPhrases.map(p => String(p).trim()).filter(p => p.length > 0);
+    if (cleaned.length < 24) return; // need at least 24 to fill a board
+    phrases = cleaned;
+    checkedPhrases.clear();
+    gameId = crypto.randomUUID();
+    io.emit('init', { gameId, phrases, checked: [] });
   });
 
   socket.on('bingo', () => {
