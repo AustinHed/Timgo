@@ -26,6 +26,10 @@ const bingoBanner = document.getElementById('bingo-banner');
 const otherBingoBanner = document.getElementById('other-bingo-banner');
 const statusEl = document.getElementById('connection-status');
 const resetBtn = document.getElementById('reset-btn');
+const editBtn = document.getElementById('edit-btn');
+const modalOverlay = document.getElementById('modal-overlay');
+const phraseListEl = document.getElementById('phrase-list');
+const phraseCountWarning = document.getElementById('phrase-count-warning');
 
 let hasBingo = false;
 
@@ -77,6 +81,81 @@ resetBtn.addEventListener('click', () => {
     socket.emit('reset');
   }
 });
+
+// --- Edit modal ---
+
+editBtn.addEventListener('click', openModal);
+document.getElementById('modal-close').addEventListener('click', closeModal);
+document.getElementById('cancel-btn').addEventListener('click', closeModal);
+document.getElementById('add-phrase-btn').addEventListener('click', () => addPhraseRow(''));
+document.getElementById('save-btn').addEventListener('click', saveChanges);
+
+modalOverlay.addEventListener('click', (e) => {
+  if (e.target === modalOverlay) closeModal();
+});
+
+function openModal() {
+  renderPhraseList(masterPhrases);
+  modalOverlay.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  modalOverlay.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+function renderPhraseList(phrases) {
+  phraseListEl.innerHTML = '';
+  phrases.forEach(p => addPhraseRow(p));
+  updateWarning();
+}
+
+function addPhraseRow(text) {
+  const row = document.createElement('div');
+  row.className = 'phrase-row';
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = text;
+  input.placeholder = 'Enter phrase…';
+  input.addEventListener('input', updateWarning);
+
+  const del = document.createElement('button');
+  del.className = 'delete-phrase-btn';
+  del.textContent = '✕';
+  del.setAttribute('aria-label', 'Delete phrase');
+  del.addEventListener('click', () => {
+    row.remove();
+    updateWarning();
+  });
+
+  row.appendChild(input);
+  row.appendChild(del);
+  phraseListEl.appendChild(row);
+
+  // Focus the new input if it's a fresh add (empty)
+  if (!text) input.focus();
+}
+
+function getCurrentPhrases() {
+  return Array.from(phraseListEl.querySelectorAll('.phrase-row input'))
+    .map(i => i.value.trim())
+    .filter(v => v.length > 0);
+}
+
+function updateWarning() {
+  const count = getCurrentPhrases().length;
+  phraseCountWarning.classList.toggle('hidden', count >= 24);
+  document.getElementById('save-btn').disabled = count < 24;
+}
+
+function saveChanges() {
+  const updated = getCurrentPhrases();
+  if (updated.length < 24) return;
+  socket.emit('updatePhrases', updated);
+  closeModal();
+}
 
 // --- Board generation ---
 
